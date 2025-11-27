@@ -1,7 +1,7 @@
-import {React, useState} from 'react';
+import React, {useState} from 'react';
 const NotesContext  = React.createContext();
 
-export default function NotesProvider({children}) {
+export default function NotesContextProvider({children}) {
     const [notes, setNotes] = useState([]);
     const [loading, setLoading] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
