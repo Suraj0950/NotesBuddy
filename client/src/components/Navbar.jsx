@@ -10,18 +10,18 @@ function Navbar({ user }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
-  // Contributor logout: ensure signOut and auth are imported where you manage auth
-  const handleSignOut = async () => {
-    const userConfirmed = window.confirm('Are you sure you want to sign out?');
-    if (userConfirmed) {
-      try {
-        // await signOut(auth); // <-- uncomment and import signOut & auth
-        console.log('Sign out placeholder (import signOut/auth to actually sign out)');
-      } catch (error) {
-        console.error('Error signing out:', error);
-      }
-    }
-  };
+  // // Contributor logout: ensure signOut and auth are imported where you manage auth
+  // const handleSignOut = async () => {
+  //   const userConfirmed = window.confirm('Are you sure you want to sign out?');
+  //   if (userConfirmed) {
+  //     try {
+  //       // await signOut(auth); // <-- uncomment and import signOut & auth
+  //       console.log('Sign out placeholder (import signOut/auth to actually sign out)');
+  //     } catch (error) {
+  //       console.error('Error signing out:', error);
+  //     }
+  //   }
+  // };
 
   const toggleMenu = () => {
     setIsMenuOpen((p) => !p);
@@ -141,7 +141,7 @@ function Navbar({ user }) {
                       </ul>
                     </motion.div>
                   )}
-                </AnimatePresence>
+                </AnimatePresence> 
               </div>
             </div>
           ) : (
