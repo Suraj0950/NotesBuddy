@@ -16,7 +16,7 @@ import {
 } from 'firebase/firestore';
 
 const firebaseConfig = {
-apiKey: "AIzaSyDFmRrWj-g1zJ0mCC02dVRlfkqSKFHBhzg",
+  apiKey: "AIzaSyDFmRrWj-g1zJ0mCC02dVRlfkqSKFHBhzg",
   authDomain: "notesbuddy-d3969.firebaseapp.com",
   projectId: "notesbuddy-d3969",
   storageBucket: "notesbuddy-d3969.firebasestorage.app",
