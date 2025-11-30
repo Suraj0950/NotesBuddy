@@ -38,10 +38,10 @@ function Navbar({ user }) {
   }, []);
 
   return (
-    <nav className="w-full h-20 shadow-md fixed border  flex items-center z-50 bg-[#101827] px-4">
+    <nav className="w-full h-20 shadow-md fixed border  flex items-center z-50 bg-[#101827] px-4 md:px-25">
       <div className="container mx-auto flex justify-between items-center p-2">
-        <Link to="/" className="text-white text-2xl md:text-3xl font-bold font-mono">
-          Notes<span className="text-[blue] font-bold ">Buddy</span>
+        <Link to="/" className="text-white text-2xl md:text-3xl">
+          Notes<span className="text-[blue] ">Buddy</span>
         </Link>
 
         <div className="flex items-center">
