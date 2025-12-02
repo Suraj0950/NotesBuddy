@@ -1,13 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import ChatbotIcon from "./ChatbotIcon";
 import botIcon from "../assets/ChatbotIcon.png";
 
 function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([
-    { id: 1, role: "bot", text: "Hey there 👋 How can I help you today?" },
+    { id: 1, role: "bot", text: "Hey there 👋 How can I help you?" },
   ]);
 
   // typing state
@@ -66,7 +65,7 @@ function Chatbot() {
   const simulateAiResponse = async (userText) => {
     cancelRef.current = false;
     setIsBotTyping(true);
-    await new Promise((r) => setTimeout(r, 600 + Math.random() * 600));
+    await new Promise((r) => setTimeout(r, 4000 + Math.random() * 3000));
 
     // if cancelled while waiting, stop
     if (cancelRef.current) {
@@ -74,7 +73,7 @@ function Chatbot() {
       return;
     }
 
-    const fakeResponse = `Sure — I got "${userText}". Here’s your response.`;
+    const fakeResponse = `Sure — I got "${userText}" Below is you Response!`;
 
     const newBotId = Date.now();
     // add placeholder bot message (empty text) so UI shows bubble immediately
@@ -143,7 +142,7 @@ function Chatbot() {
               relative bg-white text-gray-900
               rounded-2xl
               shadow-[0_0_128px_rgba(0,0,0,0.12),0_32px_64px_-48px_rgba(0,0,0,0.45)]
-              w-[350px] sm:w-[420px] max-w-[92vw] overflow-hidden
+              w-[350px] sm:w-[360px] max-w-[92vw] overflow-hidden
             "
           >
             {/* Header */}
@@ -191,14 +190,14 @@ function Chatbot() {
                       <img src={botIcon} alt="Bot" className="w-6 h-6 object-contain" />
                     </div>
 
-                    <div className="bg-[#F6F2F6] rounded-[13px_13px_13px_1px] p-3 max-w-[80%] text-sm whitespace-pre-wrap">
+                    <div className="bg-[#F6F2F6] rounded-[13px_13px_13px_1px] p-3 max-w-[80%] text-sm whitespace-pre-wrap wrap-break-word break-all">
                       {msg.text}
                       {activeTypingId === msg.id && <span className="inline-block ml-1 animate-pulse">▌</span>}
                     </div>
                   </div>
                 ) : (
                   <div key={msg.id} className="flex flex-col items-end">
-                    <div className="text-white bg-[#305057] rounded-[13px_13px_1px_13px] p-3 max-w-[80%] text-sm">
+                    <div className="text-white bg-[#305057] rounded-[13px_13px_1px_13px] p-3 max-w-[80%] text-sm whitespace-pre-wrap wrap-break-word break-all">
                       {msg.text}
                     </div>
                   </div>
@@ -212,7 +211,7 @@ function Chatbot() {
                     <img src={botIcon} alt="Bot" className="w-6 h-6 object-contain" />
                   </div>
                   <div className="bg-[#F6F2F6] rounded-[13px_13px_13px_1px] p-2 px-3 text-sm">
-                    Bot is typing{".".repeat(botTypingDots)}
+                    BotBuddy is Thinking{".".repeat(botTypingDots)}
                   </div>
                 </div>
               )}

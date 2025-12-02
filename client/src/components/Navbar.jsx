@@ -5,21 +5,29 @@ import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import myProfile from '../assets/myProfile.jpg';
 import './loader.css';
+import { signOut } from 'firebase/auth';
+import { auth } from '../firebase';
+import { useNavigate } from 'react-router-dom';
+
 
 function Navbar({ user }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
+  const navigate = useNavigate();
+  
 
-  // Contributor logout: ensure signOut and auth are imported where you manage auth
   const handleSignOut = async () => {
-    const userConfirmed = window.confirm('Are you sure you want to sign out?');
+    const userConfirmed = window.confirm("Are you sure you want to sign out?");
+
     if (userConfirmed) {
       try {
-        // await signOut(auth); // <-- uncomment and import signOut & auth
-        console.log('Sign out placeholder (import signOut/auth to actually sign out)');
+        await signOut(auth);
+        navigate('/')
       } catch (error) {
-        console.error('Error signing out:', error);
+        console.error("Error signing out:", error);
       }
+    } else {
+      console.log("Sign out canceled by the user.");
     }
   };
 
@@ -77,43 +85,105 @@ function Navbar({ user }) {
                 <AnimatePresence>
                   {isMenuOpen && (
                     <motion.div
-                      className="absolute right-0 mt-2 w-48 bg-white border border-gray-300 rounded-lg shadow-lg z-10"
-                      initial={{ opacity: 0, scale: 0.95, y: -8 }}
+                      className="
+                        absolute right-0 mt-3 w-64
+                        rounded-3xl
+                        border border-white/30
+                        bg-white/80 backdrop-blur-2xl
+                        shadow-[0_8px_30px_rgba(0,0,0,0.12)]
+                        z-50 overflow-hidden
+                      "
+                      initial={{ opacity: 0, scale: 0.94, y: -8 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: -8 }}
-                      transition={{ duration: 0.15 }}
+                      exit={{ opacity: 0, scale: 0.94, y: -8 }}
+                      transition={{ duration: 0.18 }}
                     >
-                      <ul className="pb-2 px-1 bg-amber-50 rounded-xl">
-                        <li className="py-2 border-b border-gray-300 hover:bg-amber-100 transition-all font-semibold cursor-pointer">
-                          <Link to="/userpage" onClick={toggleMenu} className="flex items-center px-4">
-                            <UserIcon size={18} className="mr-2" />
-                            <span>Your Profile</span>
+                      {/* Stylish Arrow */}
+                      <div className="absolute -top-2 right-6 w-5 h-5 bg-white/60 backdrop-blur-xl border border-white/20 rotate-45 shadow-md"></div>
+
+                      {/* User Header */}
+                      <div className="flex items-center gap-2 px-4 py-4 border-b  border-gray-100/60 bg-white/40">
+
+                        {user?.photoURL ? (
+                          <img
+                            src={user.photoURL}
+                            alt="Profile"
+                            className="h-12 w-12 rounded-3xl object-cover shadow-md border-2 border-gray-300"
+                          />
+                        ) : (
+                          <div className="h-12 w-12 rounded-2xl bg-amber-200 flex items-center justify-center text-amber-900 font-bold text-lg shadow-md">
+                            {user?.displayName?.charAt(0).toUpperCase() ||
+                              user?.email?.charAt(0).toUpperCase() ||
+                              "U"}
+                          </div>
+                        )}
+
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-semibold text-slate-800 truncate">
+                            {user?.displayName || "User"}
+                          </span>
+                          <span className="text-xs text-slate-500 truncate">{user?.email}</span>
+                        </div>
+                      </div>
+
+                      {/* Menu Items */}
+                      <ul className="py-3 ">
+                        <li>
+                          <Link
+                            to="/userpage"
+                            onClick={toggleMenu}
+                            className="
+                              flex items-center gap-3 px-5 py-3 
+                              hover:bg-amber-50/70 active:bg-amber-100 
+                              transition-all duration-150 rounded-xl mx-3
+                            "
+                          >
+                            <span className="bg-amber-100 text-amber-700 p-2 rounded-xl shadow-sm">
+                              <UserIcon size={16} />
+                            </span>
+                            <p className="text-sm font-medium text-slate-800">Your Profile</p>
                           </Link>
                         </li>
 
-                        {/* <li className="mt-2 py-0 hover:bg-amber-100 rounded-2xl transition-all font-semibold cursor-pointer">
-                          <Link to="/donate" onClick={toggleMenu} className="flex items-center px-4">
-                            <HandHeart size={18} className="mr-2" />
-                            <span>Donate us</span>
-                          </Link>
-                        </li> */}
-
-                        <li className="py-1 hover:bg-amber-100 transition-all">
-                          <Link to="/about" onClick={toggleMenu} className="flex items-center px-4">
-                            <BookOpen size={18} className="mr-2" />
-                            <span>About us</span>
+                        <li>
+                          <Link
+                            to="/about"
+                            onClick={toggleMenu}
+                            className="
+                              flex items-center gap-3 px-5 py-3 
+                              hover:bg-amber-50/70 active:bg-amber-100 
+                              transition-all duration-150 rounded-xl mx-3
+                            "
+                          >
+                            <span className="bg-amber-100 text-amber-700 p-2 rounded-xl shadow-sm">
+                              <BookOpen size={16} />
+                            </span>
+                            <p className="text-sm font-medium text-slate-800">About us</p>
                           </Link>
                         </li>
 
-                        <li
-                          className="px-4 pt-3 pb-2 text-red-500 flex items-center rounded-2xl hover:bg-amber-100 transition-all font-semibold cursor-pointer"
-                          onClick={handleSignOut}
-                        >
-                          <LogOutIcon size={16} className="mr-2" />
-                          <span>Log Out</span>
+                        {/* Divider */}
+                        <div className="my-3 mx-5 h-px bg-gray-500/60"></div>
+
+                        <li>
+                          <button
+                            onClick={handleSignOut}
+                            className="
+                              w-full flex items-center gap-3 px-5 py-3 
+                              text-red-600  active:bg-red-100 
+                              transition-all duration-150 rounded-xl mx-3
+                              cursor-pointer
+                            "
+                          >
+                            <span className="bg-red-100 text-red-600 p-2 rounded-xl shadow-sm">
+                              <LogOutIcon size={16} />
+                            </span>
+                            <p className="font-semibold text-sm">Log Out</p>
+                          </button>
                         </li>
                       </ul>
                     </motion.div>
+
                   )}
                 </AnimatePresence> 
               </div>

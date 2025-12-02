@@ -10,6 +10,9 @@ import ContributorAuth from './components/ContributorAuth';
 import AboutMe from './components/AboutMe';
 import bg from './assets/bg3.jpg';
 import Chatbot from './components/Chatbot';
+import Upload from './components/Upload';
+import UserPage from './components/UserPage';
+
 
 function App() {
   const [user, setUser] = useState(null);
@@ -36,6 +39,9 @@ function App() {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/auth" element={<ContributorAuth />} />
                 <Route path="/about" element={<AboutMe />} />
+                <Route path="/upload" element={<Upload/>} />
+                <Route path="/userpage" element={<UserPage/>} />
+                
               </Routes>
             </main>
           </div>

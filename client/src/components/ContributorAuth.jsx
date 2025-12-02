@@ -41,7 +41,9 @@ function ContributorAuth() {
     }
   };
 
-  // setup reCAPTCHA - invisible. Guard rendering to avoid duplicate render errors.
+  //  Hamko yhn se phone number with otp verification system add karna hai.
+
+  // setup reCAPTCHA - invisible. 
   const setupRecaptcha = () => {
     // If already rendered, try to return existing verifier instance from window
     if (recaptchaRenderedRef.current && window.recaptchaVerifierInstance) {
@@ -130,11 +132,6 @@ function ContributorAuth() {
     return mock;
   };
 
-  /**
-   * getAppVerifier()
-   * Returns a mock verifier on localhost to avoid Recaptcha construction errors,
-   * otherwise calls setupRecaptcha() to create the real RecaptchaVerifier.
-   */
   const getAppVerifier = () => {
     if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
       // Use mock verifier (dev only)

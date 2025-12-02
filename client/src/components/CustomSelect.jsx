@@ -54,21 +54,21 @@ const CustomSelect = ({ options, placeholder, onChange, value }) => {
   return (
     <div className="relative w-full" ref={dropdownRef}>
       <div
-        className="border border-gray-400 md:hover:bg-yellow-50 transition-all rounded-lg p-3 bg-white cursor-pointer shadow-sm"
+        className="border border-blue-500 transition-all rounded-lg p-2 bg-blue-50 cursor-pointer shadow-sm"
         onClick={() => setIsOpen(!isOpen)}
       >
         {value || placeholder || "Select an option"}
         <span className="float-right">&#9662;</span>
       </div>
       {isOpen && (
-        <div className="absolute z-10 bg-white border rounded-lg w-full mt-1 shadow-lg">
+        <div className="absolute z-10 bg-white border border-blue-400 rounded-lg w-full mt-1 shadow-lg">
           <input
             type="text"
             ref={inputRef}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search..."
-            className="p-2 w-full border-b text-green-700 font-semibold focus:outline-none"
+            className="p-2 w-full border-b text-blue-600 font-semibold focus:outline-none"
           />
           <div className="max-h-60 overflow-y-auto">
             {filteredOptions.length > 0 ? (
@@ -82,7 +82,7 @@ const CustomSelect = ({ options, placeholder, onChange, value }) => {
                 </div>
               ))
             ) : (
-              <div className="p-2 text-gray-500">No options found</div>
+              <div className="p-2 text-gray-500"> No options found </div>
             )}
           </div>
         </div>

@@ -16,13 +16,13 @@ import {
 } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDFmRrWj-g1zJ0mCC02dVRlfkqSKFHBhzg",
-  authDomain: "notesbuddy-d3969.firebaseapp.com",
-  projectId: "notesbuddy-d3969",
-  storageBucket: "notesbuddy-d3969.firebasestorage.app",
-  messagingSenderId: "30547595052",
-  appId: "1:30547595052:web:23f84ee4adb2f4f99e6689",
-  measurementId: "G-TFZ4THJPH2"
+  apiKey: "AIzaSyBk6o1BUn1--onhGKh9xnDdcg1gnlkuBPY",
+  authDomain: "notesbuddy-ff809.firebaseapp.com",
+  projectId: "notesbuddy-ff809",
+  storageBucket: "notesbuddy-ff809.firebasestorage.app",
+  messagingSenderId: "394255627262",
+  appId: "1:394255627262:web:166126239032f8572f46af",
+  measurementId: "G-Z8L8CY6J2Q"
 };
 
 const app = initializeApp(firebaseConfig);
