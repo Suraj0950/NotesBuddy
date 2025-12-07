@@ -1,40 +1,34 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
-import axios from 'axios';
 import { auth, addNote, getNotes } from '../firebase';
 import { normalizeForStorage, toTitleCase } from '../lib/utils';
-import './loader.css'
-import CustomSelect from './CustomSelect';
-import PopUpMessage from "./PopUpMessage";
+import CustomSelect from '../components/CustomSelect';
+import PopUpMessage from "../components/PopUpMessage";
 import { UploadIcon } from 'lucide-react';
+import './loader.css';
+
+import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 function Upload() {
   const [subjects, setSubjects] = useState([]);
 
   useEffect(() => {
-
     const fetchNotes = async () => {
       try {
         const fetchedNotes = await getNotes();
 
-        // Keep original case for subjects (they're now stored lowercase)
         const normalizedNotes = fetchedNotes.map(note => ({
           ...note,
           subject: note.subject || '',
         }));
 
-
-        // Extract unique subjects and format for display
         const fetchedsubjects = [...new Set(normalizedNotes.map(note => note.subject))];
 
-        // Convert to title case for display, but keep the original lowercase value
         const formattedSubjects = fetchedsubjects.map(subject => toTitleCase(subject));
         formattedSubjects.sort();
         formattedSubjects.push('Not mentioned');
 
         setSubjects(formattedSubjects);
-
       } catch (error) {
         console.error('Error fetching subjects:', error);
         setError(error.message);
@@ -42,36 +36,28 @@ function Upload() {
     };
 
     fetchNotes();
-
-
   }, []);
-
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        setContributorName(user.displayName);
+        setContributorName(user.displayName || "");
       } else {
         setContributorName("");
       }
     });
 
-    // Cleanup the listener on unmount
     return () => unsubscribe();
   }, []);
-
-
 
   const [file, setFile] = useState(null);
   const [title, setTitle] = useState('');
   const [semester, setSemester] = useState('');
-  //const [subject, setSubject] = useState('');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   const [contributorName, setContributorName] = useState('');
-
   const [module, setModule] = useState('');
 
   const messages = [
@@ -130,28 +116,25 @@ function Upload() {
   ];
 
   const [message, setMessage] = useState(messages[Math.floor(Math.random() * messages.length)]);
-
-  useEffect(()=>{
-    const interval=setInterval(()=>{
-      const index=Math.floor(Math.random() * messages.length);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const index = Math.floor(Math.random() * messages.length);
       setMessage(messages[index]);
-
-    },3000);
-
-    return ()=>clearInterval(interval);
-  },[]);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   const [uploadedFileLink, setUploadedFileLink] = useState('');
   const [uploadedFileId, setUploadedFileId] = useState('');
   const [fileUploading, setFileUploading] = useState(false);
   const [fileUploaded, setFileUploaded] = useState(false);
   const [notesUploaded, setNotesUploaded] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     const preAuthenticate = async () => {
-  
       try {
-        auth.onAuthStateChanged(async (user) => {  // Wait for auth state
+        auth.onAuthStateChanged(async (user) => {
           if (user) {
             await user.getIdToken();
           } else {
@@ -159,118 +142,179 @@ function Upload() {
           }
         });
       } catch (error) {
-        console.error("Error pre-authenticating Google Drive:", error);
+        console.error("Error pre-authenticating:", error);
       }
     };
-  
     preAuthenticate();
   }, []);
-  
 
-
-  const handleFileChange = async (e) => {
-    const selectedFile = e.target.files[0];
-    if (selectedFile) {
-      if (selectedFile.size > 100 * 1024 * 1024) { // 100MB limit
-        setError('File size must be less than 100MB');
-        return;
-      }
-
-      if (selectedFile.type.startsWith('video/')) {
-        setError('Video files are not allowed');
-        return;
-      }
-
-      if (selectedFile.type.startsWith('audio/')) {
-        setError('Audio files are not allowed');
-        return;
-      }
-
-      setFile(selectedFile);
+  // ONLINE / OFFLINE 
+  useEffect(() => {
+    function handleOnline() {
       setError(null);
+    }
+    function handleOffline() {
+      setError("You're Offline — Reconnect to upload.");
+    }
 
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // initial state
+    if (!navigator.onLine) {
+      setError("You're Offline — Reconnect to upload.");
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Helper: retry an async op on transient errors (simple exponential backoff)
+  const retryOperation = async (fn, attempts = 3, initialDelay = 500) => {
+    let attempt = 0;
+    while (attempt < attempts) {
       try {
-
-        setFileUploaded(false);
-        setFileUploading(true);
-
-
-        // Upload file to Google Drive
-        const user = auth.currentUser;
-        if (!user) {
-          navigate('/auth');
-          throw new Error('User not authenticated');
-        }
-
-        const idToken = await user.getIdToken();
-
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-
-        const response = await axios.post(
-          //'https://getmaterial-fq27.onrender.com',
-          formData,
-          {
-            headers: {
-              'Authorization': `Bearer ${idToken}`,
-              'Content-Type': 'multipart/form-data',
-            },
-          }
-        );
-
-        const { fileLink, fileId } = response.data;
-
-        // Save the uploaded file's link and ID to state
-        setUploadedFileLink(fileLink);
-        setUploadedFileId(fileId);
-
-        setFileUploaded(true);
-      } catch (error) {
-        console.error('Error uploading file:', error);
-        setError('Failed to upload Notes. Please try again by refreshing.');
-        setFileUploaded(false)
+        return await fn();
+      } catch (err) {
+        attempt++;
+        // If not a network/transient error, throw immediately.
+        // We'll treat common network indicators: message contains 'network' or 'offline' or no response property.
+        const msg = (err && err.message) ? err.message.toLowerCase() : '';
+        const isNetworkError = !navigator.onLine || msg.includes('network') || msg.includes('offline') || msg.includes('timeout');
+        if (!isNetworkError || attempt >= attempts) throw err;
+        const wait = initialDelay * Math.pow(2, attempt - 1);
+        await new Promise(r => setTimeout(r, wait));
       }
-
     }
   };
 
+  // NEW: Upload to Firebase Storage (resumable)
+  const handleFileChange = async (e) => {
+    const selectedFile = e.target.files[0];
+    if (!selectedFile) return;
+
+    if (!navigator.onLine) {
+      setError('No internet connection. Please reconnect before uploading.');
+      return;
+    }
+
+    // Validate size (100MB) and type (PDF)
+    if (selectedFile.size > 100 * 1024 * 1024) {
+      setError('File size must be less than 100MB');
+      return;
+    }
+
+    // Accept PDF only
+    if (selectedFile.type !== 'application/pdf') {
+      // sometimes browser doesn't set correct mime; fallback to extension check
+      const nameLower = selectedFile.name.toLowerCase();
+      if (!nameLower.endsWith('.pdf')) {
+        setError('Only PDF files are allowed.');
+        return;
+      }
+    }
+
+    setFile(selectedFile);
+    setError(null);
+
+    try {
+      setFileUploaded(false);
+      setFileUploading(true);
+      setUploadProgress(0);
+
+      const user = auth.currentUser;
+      if (!user) {
+        navigate('/auth');
+        throw new Error('User not authenticated');
+      }
+
+      // Build a storage path with user id and timestamp to avoid collisions
+      const uid = user.uid;
+      const timestamp = Date.now();
+      const safeName = selectedFile.name.replace(/\s+/g, '_').substring(0, 120); // sanitize
+      const storagePath = `notes/${uid}/${timestamp}_${safeName}`; // you can change folder structure
+
+      const storage = getStorage(); // uses default app
+      const fileRef = storageRef(storage, storagePath);
+
+      const metadata = {
+        contentType: 'application/pdf',
+        customMetadata: {
+          uploadedBy: uid,
+          originalName: selectedFile.name,
+        },
+      };
+
+      // Upload with resumable so we can show progress
+      const uploadTask = uploadBytesResumable(fileRef, selectedFile, metadata);
+
+      uploadTask.on('state_changed',
+        (snapshot) => {
+          // progress handler
+          const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+          setUploadProgress(percent);
+          // optional: set message based on progress
+          if (percent === 100) setMessage('Finishing up... almost done!');
+        },
+        (uploadError) => {
+          // error handler
+          console.error('Upload error:', uploadError);
+          // Show helpful error depending on network vs other error
+          if (!navigator.onLine) {
+            setError('Upload interrupted — you appear to be offline. It will resume when your connection returns.');
+          } else {
+            setError('Failed to upload file to storage. Try again.');
+          }
+          setFileUploading(false);
+          setFileUploaded(false);
+        },
+        async () => {
+          // success handler: get download URL
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            setUploadedFileLink(downloadURL);
+            setUploadedFileId(storagePath); // store path as id
+            setFileUploaded(true);
+            setFileUploading(false);
+            setUploadProgress(100);
+            console.log('File uploaded. downloadURL:', downloadURL, 'storagePath:', storagePath);
+          } catch (err) {
+            console.error('Failed to get download URL:', err);
+            setError('Uploaded but failed to get file URL. Contact support.');
+            setFileUploading(false);
+            setFileUploaded(false);
+          }
+        }
+      );
+
+    } catch (error) {
+      console.error('Error during file upload:', error);
+      setError('Failed to upload file. Please try again.');
+      setFileUploading(false);
+      setFileUploaded(false);
+    }
+  };
 
   const [selectedSubject, setSelectedSubject] = useState('');
   const [newSubject, setNewSubject] = useState('');
-
-  // Ref for the new subject input field
   const newSubjectInputRef = useRef(null);
 
-  // Auto-focus the input when "Not mentioned" is selected
   useEffect(() => {
     if (selectedSubject === 'Not mentioned' && newSubjectInputRef.current) {
-      // Small delay to ensure the input is rendered
       setTimeout(() => {
         newSubjectInputRef.current.focus();
       }, 100);
     }
   }, [selectedSubject]);
 
-
-  const handleAddSubject = () => {
-    if (newSubject && !subjects.includes(newSubject)) {
-      setSubjects([...subjects, newSubject]);
-      setSelectedSubject(newSubject);
-      setNewSubject('');
-    } else {
-      setError('Subject already exists or is empty'); // Use state instead of alert
-    }
-  };
-
-  // Function to get the actual subject name to submit
   const getSubjectForSubmission = () => {
     if (selectedSubject === 'Not mentioned') {
       return normalizeForStorage(newSubject.trim() || '');
     }
     return normalizeForStorage(selectedSubject);
   };
-
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -283,17 +327,15 @@ function Upload() {
       return;
     }
 
-    // Get the actual subject to use for submission
-    const subjectToSubmit = getSubjectForSubmission();
-    
-    // Validate that we have a subject
-    if (!subjectToSubmit) {
-      setError('Please select a subject or enter a new subject name.');
+    if (!navigator.onLine) {
+      setError('No internet connection. Please reconnect before submitting.');
       return;
     }
 
-    if (!uploadedFileLink || !uploadedFileId) {
-      setError('File Uploading... please wait || select a file if not selected.');
+    const subjectToSubmit = getSubjectForSubmission();
+
+    if (!subjectToSubmit) {
+      setError('Please select a subject or enter a new subject name.');
       return;
     }
 
@@ -303,45 +345,51 @@ function Upload() {
 
     if (!fileUploaded) {
       setUploading(true);
-    };
+    }
 
     setError(null);
 
     try {
-      // Prepare the note data with pre-uploaded file details
+      // Build noteData WITHOUT client-side timestamps/authorUid
       const noteData = {
         name: title,
-        semester,
+        semester: Number(semester), // ensure number type
         subject: subjectToSubmit,
-        contributorName,
+        contributorName: contributorName || auth.currentUser.displayName || '',
         module,
         fileUrl: uploadedFileLink,
         fileId: uploadedFileId,
         likes: 0,
       };
 
-      // Add note to Firestore
-      await addNote(noteData);
+      // Use retryOperation to handle transient network errors when writing to Firestore
+      await retryOperation(() => addNote(noteData), 3, 500);
 
-      console.log('NOTES submitted successfully.');
+      console.log('Form submitted successfully.');
 
       setNotesUploaded(true);
-
       navigate('/');
     } catch (error) {
       console.error('Error submitting form:', error);
-      setError('Submission failed. Please try again.');
+      // More useful message for network vs validation/rules error
+      const msg = (error && error.message) ? error.message.toLowerCase() : '';
+      if (!navigator.onLine || msg.includes('network') || msg.includes('offline')) {
+        setError('Submission failed due to network. Please reconnect and try again.');
+      } else if (msg.includes('permission') || msg.includes('denied')) {
+        setError('Permission denied. Check your Firestore rules and authentication.');
+      } else {
+        setError('Submission failed. Please try again.');
+      }
     } finally {
       setUploading(false);
     }
   };
 
-
   return (
-    <div className="container  mx-auto md:mt-20 mt-24 px-4 pt-2">
-      <h1 className="text-2xl font-bold md:my-6 mb-3 text-center">Upload Notes</h1>
+    <div className="container mx-auto md:mt-20 mt-24 px-4 pt-2">
+      <h1 className="text-3xl font-bold md:my-6 mb-3 text-center">Upload Notes</h1>
       {error && (
-        <div className="mb-5 p-3 bg-red-500/20 border border-red-500 text-red-500 rounded">
+        <div className="mb-4 p-3 bg-red-100 border border-red-600 text-red-600 rounded backdrop-blur-lg">
           {error}
         </div>
       )}
@@ -349,70 +397,60 @@ function Upload() {
       {notesUploaded && (
         <PopUpMessage
           message="Notes Uploaded 🎉🎉!"
-          type="success" // 'info', 'error', 'warning', or 'success'
-          duration={5000} // Duration in milliseconds
+          type="success"
+          duration={5000}
         />
       )}
 
-      <form onSubmit={handleSubmit} className="upload-container  max-w-md bg-linear-to-r px-8 py-7 rounded-2xl mx-auto space-y-4">
+      <form onSubmit={handleSubmit} className="upload-container max-w-md bg-linear-to-r px-8 py-7 rounded-2xl mx-auto space-y-4">
 
         {fileUploading ? (
-
           <div>
             {fileUploaded ? (
-              <div className='border-dashed border-blue-500 border rounded-xl p-3'>
+              <div className='border-dashed border-2 border-blue-600  rounded-xl p-3'>
                 <p className=' text-green-500 font-bold text-center'>Uploaded 🎉</p>
-                <p className='text-gray-500 text-sm text-center font-semibold'>Click Upload Notes !</p>
+                <p className='text-gray-500 text-sm text-center font-semibold'>click Upload Note !</p>
                 <PopUpMessage
                   message="SUBMIT NOW! ,File uploaded ✅!"
-                  type="success" // 'info', 'error', 'warning', or 'success'
-                // Duration in milliseconds
+                  type="success"
                 />
               </div>
-
             ) : (
-              <div className='border-dashed border-e-blue-500 border flex flex-col justify-center items-center rounded-xl p-3'>
-
+              <div className='border-dashed border-blue-600 border-2 flex flex-col justify-center items-center rounded-xl p-3'>
                 <div className='justify-center flex items-center'>
-                  <p className=' text-red-500 text-center font-bold  '>Uploading...</p>
+                  <p className=' text-red-500 text-center font-bold  '>uploading... {uploadProgress}%</p>
                   <p className='loader2 text-center flex align-middle justify-center'></p>
                 </div>
-                <p className='text-green-400 text-sm text-center font-semibold'>Please wait ! Don't submit</p>
+                <p className='text-gray-500 text-sm text-center font-semibold'>{message}</p>
               </div>
             )}
           </div>
-
         ) : (<div>
-          
-          <div className='flex justify-center bg-blue-50 transition-all'>
-          <input
-            type="file"
-            onChange={handleFileChange}
-            className="hidden"
-            id="file-upload"
-          />
-          <label
-            htmlFor="file-upload"
-            className="w-full text-center items-center text-blue-600  flex justify-center p-4 border-dashed border-2 border-blue-600 cursor-pointer  transition-all  rounded-xl focus:ring-2 focus:ring-green-500"
-          >
-            <UploadIcon className="inline-block mr-5 size-5 items-center" />
-            Upload Pdf Notes
-          </label>
+          <div className='flex justify-center hover:bg-yellow-50 transition-all'>
+            <input
+              type="file"
+              accept=".pdf,application/pdf"
+              onChange={handleFileChange}
+              className="hidden"
+              id="file-upload"
+            />
+            <label
+              htmlFor="file-upload"
+              className="w-full text-center items-center  flex justify-center p-4 border-dashed border-black cursor-pointer hover:bg-green-00 transition-all border rounded-xl focus:ring-2 focus:ring-green-500"
+            >
+              <UploadIcon className="inline-block mr-5 size-5 items-center" />
+              Upload File (PDF)
+            </label>
           </div>
         </div>)}
 
-
-
-
         <div>
-          
           <CustomSelect
             options={subjects}
             placeholder={selectedSubject || "Select a subject"}
             onChange={(selectedOption) => setSelectedSubject(selectedOption)}
           />
 
-          {/* Conditionally render the input field when 'Not mentioned' is selected */}
           {selectedSubject === 'Not mentioned' && (
             <div className="mt-2">
               <input
@@ -421,27 +459,19 @@ function Upload() {
                 value={newSubject}
                 onChange={(e) => setNewSubject(e.target.value)}
                 placeholder="Enter new subject name..."
-                className="w-full p-2 border-2 border-blue-500 rounded-lg focus:ring-1 focus:ring-green-500"
+                className="w-full p-2 border-2 border-blue-500 rounded-lg focus:ring-1 focus:ring-blue-500"
                 required
               />
-              
             </div>
           )}
         </div>
 
-
-
-
-
-
-
-        <div className='flex gap-5'>
-
-          <div className='flex items-center justify-between'>
+        <div className='grid grid-cols-2 gap-4'>
+          <div>
             <select
               value={semester}
               onChange={(e) => setSemester(e.target.value)}
-              className="w-full p-2 border bg-blue-50 cursor-pointer transition-all border-blue-500 rounded-lg"
+              className="w-full p-2 border md:hover:bg-yellow-50 cursor-pointer transition-all border-gray-400 rounded-lg"
               required
             >
               <option value="">Select Semester</option>
@@ -452,13 +482,10 @@ function Upload() {
           </div>
 
           <div>
-            {/* <label className="block text-sm font-medium text-gray-700 mb-1">
-              Module
-            </label> */}
             <select
               value={module}
               onChange={(e) => setModule(e.target.value)}
-              className="w-full p-2 border-blue-500 bg-blue-50 cursor-pointer transition-all border rounded-lg"
+              className="w-full p-2 border-gray-400 md:hover:bg-yellow-50 cursor-pointer transition-all border rounded-lg"
               required
             >
               <option value="">Select Module</option>
@@ -467,23 +494,21 @@ function Upload() {
               ))}
             </select>
           </div>
-
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            College Name / Details
+            College Name <span className='text-red-500'>*</span>
           </label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Ex: GEC Palamu, BIT Sindri etc"
-            className="w-full p-2 border border-blue-500 bg-blue-50 rounded-lg font-semibold "
+            placeholder="Ex: GEC Palamu, BIT Sindri "
+            className="w-full p-2 border rounded-lg  font-semibold"
             required
           />
         </div>
-
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -494,10 +519,9 @@ function Upload() {
             value={contributorName}
             onChange={(e) => setContributorName(e.target.value)}
             placeholder="Enter your name"
-            className="w-full p-2 font-semibold border border-blue-500 bg-blue-50 rounded-lg "
+            className="w-full p-2 font-semibold border rounded-lg focus:ring-1"
           />
         </div>
-
 
         <button
           type="submit"
@@ -510,14 +534,6 @@ function Upload() {
           {uploading ? 'Uploading...' : 'Upload Notes'}
         </button>
       </form>
-
-      {fileUploading && !fileUploaded && (
-        <div className='bg-yellow-50 pb-5 px-3 md:right-20 w-fit md:absolute md:top-1/2'>
-          <div className='mt-5 h-20 md:h-0'>
-            <p className='text-center text-emerald-700 font-semibold'>{message}</p>
-          </div>
-        </div>
-      )}
 
       {uploading && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 transition-all z-50">
